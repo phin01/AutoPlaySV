@@ -19,21 +19,26 @@ namespace AutoPlaySV
         {
             EnterAnimalBuilding,
             EnterFarmHouse,
-            EnterGreenhouse
+            EnterGreenhouse,
+            MoveToAnimal
         }
 
         public Point Destination { get; set; }
         
         public MovementAction MovAction { get; set; }
 
-        public ModEntry.NextAction NextAction { get; set; }
+        public ModEntry.Action NextAction { get; set; }
+
+        public object ParamObject { get; set; }
 
 
-        public MovementDestination(Point destination, MovementAction movementAction, ModEntry.NextAction nextAction)
+        public MovementDestination(Point destination, MovementAction movementAction, ModEntry.Action nextAction, object paramObject = null)
         {
             this.Destination = destination;
             this.MovAction = movementAction;
             this.NextAction = nextAction;
+            this.ParamObject = paramObject;
+
         }
 
         public bool performAction()
@@ -54,6 +59,10 @@ namespace AutoPlaySV
                     return false;
                     break;
 
+                case MovementAction.MoveToAnimal:
+                    return TryToPetAnimal((FarmAnimal)ParamObject);
+                    break;
+
                 default:
                     return false;
 
@@ -71,6 +80,19 @@ namespace AutoPlaySV
             }
             else
                 return false;
+        }
+
+        public bool TryToPetAnimal(FarmAnimal animal)
+        {
+            try
+            {
+                animal.pet(Game1.player);
+                return true;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
         }
     }
 }
