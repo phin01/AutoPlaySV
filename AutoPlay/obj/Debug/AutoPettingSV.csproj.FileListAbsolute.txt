@@ -1,0 +1,6 @@
+C:\Users\Paulo\source\repos\AutoPettingSV\AutoPettingSV\bin\Debug\AutoPettingSV.dll
+C:\Users\Paulo\source\repos\AutoPettingSV\AutoPettingSV\bin\Debug\AutoPettingSV.pdb
+C:\Users\Paulo\source\repos\AutoPettingSV\AutoPettingSV\obj\Debug\AutoPettingSV.csproj.AssemblyReference.cache
+C:\Users\Paulo\source\repos\AutoPettingSV\AutoPettingSV\obj\Debug\AutoPettingSV.csproj.CoreCompileInputs.cache
+C:\Users\Paulo\source\repos\AutoPettingSV\AutoPettingSV\obj\Debug\AutoPettingSV.dll
+C:\Users\Paulo\source\repos\AutoPettingSV\AutoPettingSV\obj\Debug\AutoPettingSV.pdb

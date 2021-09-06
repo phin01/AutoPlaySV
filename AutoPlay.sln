@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.31321.278
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AutoPlay", "AutoPlay\AutoPlay.csproj", "{B462897A-5F57-4DA9-805F-3DC7D9D7A519}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{B462897A-5F57-4DA9-805F-3DC7D9D7A519}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B462897A-5F57-4DA9-805F-3DC7D9D7A519}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B462897A-5F57-4DA9-805F-3DC7D9D7A519}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B462897A-5F57-4DA9-805F-3DC7D9D7A519}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {7EB6B2AD-FEFB-494B-ABF8-1A615041F455}
+	EndGlobalSection
+EndGlobal

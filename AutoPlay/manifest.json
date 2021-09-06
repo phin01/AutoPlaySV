@@ -1,0 +1,10 @@
+{
+  "Name": "AutoPlay SV Mod",
+  "Author": "Letanze",
+  "Version": "0.0.1",
+  "Description": "Rule-based AI to play Stardew Valley automatically. Why? Because why not!",
+  "UniqueID": "Letanze.AutoPlay",
+  "EntryDll": "AutoPlaySV.dll",
+  "MinimumApiVersion": "3.0.0",
+  "UpdateKeys": []
+}
