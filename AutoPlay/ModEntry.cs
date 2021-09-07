@@ -23,6 +23,7 @@ namespace AutoPlaySV
             leaveHouse,
             findAnimalBuildings,
             moveToAnimalBuildings,
+            updateAnimalBuildingList,
             getAnimalsList,
             moveToAnimal,
             petAnimal,
@@ -34,14 +35,13 @@ namespace AutoPlaySV
         }
         
         
-        private static PathFindController testPathFind;
+        private static PathFindController pathFind;
         private List<Building> animalBuildings;
         private List<FarmAnimal> animalsToPet;
         private Point destinationChecker;
         private MovementDestination movementDestination;
         private Action nextAction;
         private Action fallbackAction;
-        private int startTimeOfMovement;
 
 
         // Events
@@ -58,7 +58,7 @@ namespace AutoPlaySV
             helper.Events.GameLoop.UpdateTicked += GameLoop_UpdateTicked;
             autoPlayActive = true;
 
-            this.DayHasStarted += ExitMainHouse;
+            this.DayHasStarted += ExitFarmHouse;
             nextAction = Action.leaveHouse;
 
         }
@@ -75,7 +75,7 @@ namespace AutoPlaySV
             {
                 try
                 {
-                    testPathFind.update(Game1.currentGameTime);
+                    pathFind.update(Game1.currentGameTime);
                     Game1.player.updateMovement(Game1.player.currentLocation, Game1.currentGameTime);
                     Game1.player.updateMovementAnimation(Game1.currentGameTime);
                 }
@@ -94,9 +94,9 @@ namespace AutoPlaySV
 
             if (e.Button == SButton.P)
             {
-                Point nearby = FindNearbyUnoccupiedTileThatFitsCharacter(Game1.player.currentLocation, 38, 13);
-                this.Monitor.Log($"Nearby Point Available -  X: {nearby.X}  Y: {nearby.Y}", LogLevel.Debug);
-                //this.GetAnimalBuildings();
+                autoPlayActive = true;
+                ExitBuildingToFarm();
+                autoPlayActive = false;
             }
 
             if (e.Button == SButton.O)
@@ -121,7 +121,7 @@ namespace AutoPlaySV
         // ***************************************************** 
         // EVENT FUNCTIONS
         // *****************************************************
-        private void ExitMainHouse(object sender, EventArgs e)
+        private void ExitFarmHouse(object sender, EventArgs e)
         {
             if (Game1.currentLocation.Name == "FarmHouse")
             {
@@ -131,7 +131,7 @@ namespace AutoPlaySV
                     {
                         Point mainHouseDoor = new Point(warp.X, warp.Y);
                         this.Monitor.Log($"Moving to Destination: {mainHouseDoor}", LogLevel.Debug);
-                        MoveToLocation(mainHouseDoor);
+                        MoveToLocationBool(mainHouseDoor);
                     }
                 }
             }
@@ -178,26 +178,61 @@ namespace AutoPlaySV
             // Move To Animal Building
             if (Game1.currentLocation.Name == "Farm" && nextAction == Action.moveToAnimalBuildings)
             {
-                autoPlayActive = true;
                 if (animalBuildings.Count > 0)
                 {
                     destinationChecker = new Point(animalBuildings[0].getPointForHumanDoor().X, animalBuildings[0].getPointForHumanDoor().Y + 1);
                     movementDestination = new MovementDestination(destinationChecker, MovementDestination.MovementAction.EnterAnimalBuilding, Action.getAnimalsList);
                     
-                    MoveToLocation(destinationChecker);
+                    MoveToLocationBool(destinationChecker);
+                    autoPlayActive = true;
+
                     this.Monitor.Log($"Moving to  {animalBuildings[0].buildingType} at X: {destinationChecker.X} Y: {destinationChecker.Y}", LogLevel.Debug);
                     nextAction = Action.awaitDestination;
                     fallbackAction = Action.noAction;
-                    startTimeOfMovement = Game1.timeOfDay;
                 }
             }
 
+            // ****************************************************
             // Destination Checker
+            // ****************************************************
             if (nextAction == Action.awaitDestination)
             {
-                //this.Monitor.Log($"Time of day elapsed: {Game1.timeOfDay - startTimeOfMovement}", LogLevel.Debug);
-                
-                if(Game1.timeOfDay - startTimeOfMovement < 10)
+                try
+                {
+                    if (pathFind.pathToEndPoint.Count > 0)
+                    {
+                        if (Game1.player.getTileX() == destinationChecker.X && Game1.player.getTileY() == destinationChecker.Y)
+                        {
+                            this.Monitor.Log($"Reached Destination X: {destinationChecker.X} Y: {destinationChecker.Y}", LogLevel.Debug);
+                            bool actionResult = movementDestination.performAction();
+                            if (actionResult)
+                            {
+                                autoPlayActive = false;
+                                nextAction = movementDestination.NextAction;
+                            }
+                            else
+                                this.Monitor.Log($"Could not perform Destination Action at X: {destinationChecker.X} Y: {destinationChecker.Y}", LogLevel.Debug);
+                        }
+                    }
+                }
+                catch (Exception)
+                {
+                    this.Monitor.Log($"Caught error in awaitDestination", LogLevel.Debug);
+                    if (fallbackAction == Action.noAction)
+                    {
+                        autoPlayActive = false;
+                        MoveToLocationBool(destinationChecker);
+                        autoPlayActive = true;
+                    }
+                    else
+                    {
+                        nextAction = fallbackAction;
+                        fallbackAction = Action.noAction;
+                    }
+                }
+
+                /*
+                if (testPathFind.pathToEndPoint.Count > 0)
                 {
                     if (Game1.player.getTileX() == destinationChecker.X && Game1.player.getTileY() == destinationChecker.Y)
                     {
@@ -228,6 +263,7 @@ namespace AutoPlaySV
                     }
                     
                 }
+                */
 
             }
 
@@ -247,15 +283,34 @@ namespace AutoPlaySV
             {
                 if(animalsToPet.Count > 0)
                 {
+                    bool successfulPath = false;
                     autoPlayActive = true;
-                    destinationChecker = new Point((int)animalsToPet[0].position.X / 64, (int)animalsToPet[0].position.Y / 64);
-                    movementDestination = new MovementDestination(destinationChecker, MovementDestination.MovementAction.MoveToAnimal, Action.updateAnimalList, animalsToPet[0]);
+                    int loopingCounter = 0;
 
-                    MoveToLocation(destinationChecker);
+                    while (!successfulPath)
+                    {
+                        destinationChecker = new Point((int)animalsToPet[0].position.X / 64, (int)animalsToPet[0].position.Y / 64);
+                        destinationChecker = FindNearbyUnoccupiedPoint(destinationChecker);
+                        successfulPath = MoveToLocationBool(destinationChecker);
+                        loopingCounter++;
+                        this.Monitor.Log($"Looping... {loopingCounter} times", LogLevel.Debug);
+                    }
+
+                    movementDestination = new MovementDestination(destinationChecker, MovementDestination.MovementAction.MoveToAnimal, Action.updateAnimalList, animalsToPet[0]);
                     this.Monitor.Log($"Moving to Animal {animalsToPet[0].name} at X: {destinationChecker.X} Y: {destinationChecker.Y}", LogLevel.Debug);
                     nextAction = Action.awaitDestination;
                     fallbackAction = Action.moveToAnimal;
-                    startTimeOfMovement = Game1.timeOfDay;
+
+                    /*autoPlayActive = true;
+                    destinationChecker = new Point((int)animalsToPet[0].position.X / 64, (int)animalsToPet[0].position.Y / 64);
+                    destinationChecker = FindNearbyUnoccupiedPoint(destinationChecker);
+                    movementDestination = new MovementDestination(destinationChecker, MovementDestination.MovementAction.MoveToAnimal, Action.updateAnimalList, animalsToPet[0]);
+                    MoveToLocation(destinationChecker, searchNearby: false);
+
+                    this.Monitor.Log($"Moving to Animal {animalsToPet[0].name} at X: {destinationChecker.X} Y: {destinationChecker.Y}", LogLevel.Debug);
+                    nextAction = Action.awaitDestination;
+                    fallbackAction = Action.moveToAnimal;
+                    */
                 }
             }
 
@@ -277,9 +332,29 @@ namespace AutoPlaySV
             // Leave Animal House after all tasks have been completed
             if (nextAction == Action.exitAnimalHouse)
             {
+                autoPlayActive = true;
                 this.Monitor.Log($"Leaving {animalBuildings[0].buildingType}", LogLevel.Debug);
-                nextAction = Action.noAction;
+                ExitBuildingToFarm();
+                nextAction = Action.updateAnimalBuildingList;
             }
+
+            // After completing tasks in Animal House, update List and restart cycle for next Houses
+            if (Game1.currentLocation.Name == "Farm" && nextAction == Action.updateAnimalBuildingList)
+            {
+                autoPlayActive = false;
+                if (animalBuildings.Count > 1)
+                {
+                    animalBuildings.RemoveAt(0);
+                    nextAction = Action.moveToAnimalBuildings;
+                }
+                else
+                {
+                    animalBuildings.RemoveAt(0);
+                    nextAction = Action.noAction;
+                }
+            }
+
+
 
 
 
@@ -296,18 +371,37 @@ namespace AutoPlaySV
         // *****************************************************
         // AUX FUNCTIONS
         // *****************************************************
-        private void MoveToLocation(Point destination)
+        private void MoveToLocation(Point destination, bool searchNearby = true)
         {
             //this.Monitor.Log($"Moving to Destination: {destination}", LogLevel.Debug);
-            if (Game1.player.currentLocation.isTileOccupiedForPlacement(new Vector2(destination.X, destination.Y)))
+            if (searchNearby && Game1.player.currentLocation.isTileOccupiedForPlacement(new Vector2(destination.X, destination.Y)))
+            //if (searchNearby && Game1.player.currentLocation.isTileOccupied(new Vector2(destination.X, destination.Y)))
             {
                 this.Monitor.Log($"Tile {destination} occupied", LogLevel.Debug);
                 destination = FindNearbyUnoccupiedPoint(destination);
             }
-                
 
-            testPathFind = new PathFindController(Game1.player, Game1.player.currentLocation, destination, 0);
-            //this.Monitor.Log($"testPathFind: {testPathFind}", LogLevel.Debug);
+            pathFind = new PathFindController(Game1.player, Game1.player.currentLocation, destination, 0);
+        }
+
+        private bool MoveToLocationBool(Point destination)
+        {
+            PathFindController testPathFind = new PathFindController(Game1.player, Game1.player.currentLocation, destination, 0);
+            try
+            {
+                if (testPathFind.pathToEndPoint.Count > 0)
+                {
+                    pathFind = testPathFind;
+                    return true;
+                }
+                else
+                    return false;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+            
         }
 
         private List<Building> GetAnimalBuildings()
@@ -318,7 +412,11 @@ namespace AutoPlaySV
             {
                 //this.Monitor.Log($"Building Type: {b.buildingType}", LogLevel.Debug);
                 if (b.buildingType.Contains("Barn") || b.buildingType.Contains("Coop"))
+                {
                     listBuildings.Add(b);
+                    this.Monitor.Log($"Tile {b.tileX} occupied", LogLevel.Debug);
+                }
+                    
             }
             return listBuildings;
         }
@@ -346,11 +444,11 @@ namespace AutoPlaySV
             return animalList;
         }
 
-
         private Point FindNearbyUnoccupiedPoint(Point originalDestination)
         {
-            Point[] offsets = new Point[16]
+            Point[] offsets = new Point[17]
             {
+                new Point(0, 0),
                 new Point(-1, 0),
                 new Point(1, 0),
                 new Point(0, -1),
@@ -380,101 +478,27 @@ namespace AutoPlaySV
             return originalDestination;
         }
 
-
-
-        public Point FindNearbyUnoccupiedTileThatFitsCharacter(GameLocation location, int target_x, int target_y, int width = 1, Point? invalid_tile = null)
+        private void ExitBuildingToFarm()
         {
-            HashSet<Point> visited_tiles = new HashSet<Point>();
-            List<Point> open_tiles = new List<Point>();
-            open_tiles.Add(new Point(target_x, target_y));
-            visited_tiles.Add(new Point(target_x, target_y));
-            Point[] offsets = new Point[4]
+            bool successfulPath = false;
+            int loopingCounter = 0;
+
+            foreach (Warp warp in Game1.currentLocation.warps)
             {
-                new Point(-1, 0),
-                new Point(1, 0),
-                new Point(0, -1),
-                new Point(0, 1)
-            };
-            for (int i = 0; i < 500; i++)
-            {
-                if (open_tiles.Count == 0)
+                if (warp.TargetName == "Farm")
                 {
-                    break;
-                }
-                Point tile = open_tiles[0];
-                open_tiles.RemoveAt(0);
-                Point[] array = offsets;
-                for (int j = 0; j < array.Length; j++)
-                {
-                    Point offset = array[j];
-                    Point next_tile = new Point(tile.X + offset.X, tile.Y + offset.Y);
-                    if (!visited_tiles.Contains(next_tile))
+                    Point exitDoor = new Point(warp.X, warp.Y);
+                    this.Monitor.Log($"Moving to Destination: {exitDoor}", LogLevel.Debug);
+
+                    while (!successfulPath)
                     {
-                        open_tiles.Add(next_tile);
+                        successfulPath = MoveToLocationBool(exitDoor);
+                        loopingCounter++;
+                        this.Monitor.Log($"Looping... {loopingCounter} times", LogLevel.Debug);
                     }
-                }
-                if (visited_tiles.Contains(tile) || (invalid_tile.HasValue && tile.X == invalid_tile.Value.X && tile.Y == invalid_tile.Value.Y))
-                {
-                    continue;
-                }
-                visited_tiles.Add(tile);
-                bool fail = false;
-                int height = 1;
-                for (int w = 0; w < width; w++)
-                {
-                    for (int h = 0; h < height; h++)
-                    {
-                        Point checked_tile = new Point(tile.X + w, tile.Y + h);
-                        new Microsoft.Xna.Framework.Rectangle(checked_tile.X * 64, checked_tile.Y * 64, 64, 64).Inflate(-4, -4);
-                        if (checked_tile.X == target_x && checked_tile.Y == target_y + 1)
-                        {
-                            fail = true;
-                            break;
-                        }
-                        if (invalid_tile.HasValue && invalid_tile.Value == checked_tile)
-                        {
-                            fail = true;
-                            break;
-                        }
-                        if (!location.isTileLocationOpenIgnoreFrontLayers(new xTile.Dimensions.Location(checked_tile.X, checked_tile.Y)))
-                        {
-                            fail = true;
-                            break;
-                        }
-                        if (location.isObjectAtTile(checked_tile.X, checked_tile.Y))
-                        {
-                            fail = true;
-                            break;
-                        }
-                        if (location.isTerrainFeatureAt(checked_tile.X, checked_tile.Y))
-                        {
-                            fail = true;
-                            break;
-                        }
-                        if (fail)
-                        {
-                            continue;
-                        }
-                        Microsoft.Xna.Framework.Rectangle tile_rect = new Microsoft.Xna.Framework.Rectangle(checked_tile.X * 64, checked_tile.Y * 64, 64, 64);
-                        foreach (ResourceClump resourceClump in location.resourceClumps)
-                        {
-                            if (resourceClump.getBoundingBox(resourceClump.tile).Intersects(tile_rect))
-                            {
-                                fail = true;
-                                break;
-                            }
-                        }
-                    }
-                }
-                if (!fail)
-                {
-                    return tile;
                 }
             }
-            return new Point(target_x, target_y);
         }
-
-
 
     }
 }

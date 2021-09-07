@@ -72,7 +72,8 @@ namespace AutoPlaySV
 
         public bool TryToWarp(int warpX, int warpY)
         {
-            Warp w2 = Game1.currentLocation.isCollidingWithWarpOrDoor(new Microsoft.Xna.Framework.Rectangle(18 * 64, 11 * 64, 64, 64), Game1.player);
+            //Warp w2 = Game1.currentLocation.isCollidingWithWarpOrDoor(new Microsoft.Xna.Framework.Rectangle(18 * 64, 11 * 64, 64, 64), Game1.player);
+            Warp w2 = Game1.currentLocation.isCollidingWithWarpOrDoor(new Microsoft.Xna.Framework.Rectangle(warpX * 64, warpY * 64, 64, 64), Game1.player);
             if (w2 != null)
             {
                 Game1.player.warpFarmer(w2);
