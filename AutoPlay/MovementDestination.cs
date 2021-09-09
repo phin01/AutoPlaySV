@@ -20,7 +20,8 @@ namespace AutoPlaySV
             EnterAnimalBuilding,
             EnterFarmHouse,
             EnterGreenhouse,
-            MoveToAnimal
+            MoveToAnimal,
+            MoveToProductMaker
         }
 
         public Point Destination { get; set; }
@@ -29,16 +30,37 @@ namespace AutoPlaySV
 
         public ModEntry.Action NextAction { get; set; }
 
-        public object ParamObject { get; set; }
+        //public object ParamObject { get; set; }
+        public StardewValley.Object ParamObject { get; set; }
+
+        public FarmAnimal ParamFarmAnimal { get; set; }
 
 
-        public MovementDestination(Point destination, MovementAction movementAction, ModEntry.Action nextAction, object paramObject = null)
+        public MovementDestination(Point destination, MovementAction movementAction, ModEntry.Action nextAction)
         {
             this.Destination = destination;
             this.MovAction = movementAction;
             this.NextAction = nextAction;
-            this.ParamObject = paramObject;
+            //this.ParamFarmAnimal = paramFarmAnimal;
+            //this.ParamObject = paramObject;
+        }
 
+        public MovementDestination(Point destination, MovementAction movementAction, ModEntry.Action nextAction, FarmAnimal paramFarmAnimal)
+        {
+            this.Destination = destination;
+            this.MovAction = movementAction;
+            this.NextAction = nextAction;
+            this.ParamFarmAnimal = paramFarmAnimal;
+            //this.ParamObject = paramObject;
+        }
+
+        public MovementDestination(Point destination, MovementAction movementAction, ModEntry.Action nextAction, StardewValley.Object paramObject)
+        {
+            this.Destination = destination;
+            this.MovAction = movementAction;
+            this.NextAction = nextAction;
+            //this.ParamFarmAnimal = paramFarmAnimal;
+            this.ParamObject = paramObject;
         }
 
         public bool performAction()
@@ -60,7 +82,11 @@ namespace AutoPlaySV
                     break;
 
                 case MovementAction.MoveToAnimal:
-                    return TryToPetAnimal((FarmAnimal)ParamObject);
+                    return TryToPetAnimal(ParamFarmAnimal);
+                    break;
+
+                case MovementAction.MoveToProductMaker:
+                    return GetProductFromMaker(ParamObject);
                     break;
 
                 default:
@@ -95,5 +121,22 @@ namespace AutoPlaySV
                 return false;
             }
         }
+
+        public bool GetProductFromMaker(StardewValley.Object productMaker)
+        {
+            try
+            {
+                productMaker.checkForAction(Game1.player);
+                return true;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+    
+    
+    
+    
     }
 }

@@ -22,14 +22,21 @@ namespace AutoPlaySV
         public enum Action
         {
             leaveHouse,
+            
             findAnimalBuildings,
             moveToAnimalBuildings,
             updateAnimalBuildingList,
+            
             getAnimalsList,
             moveToAnimal,
             petAnimal,
             updateAnimalList,
             exitAnimalHouse,
+
+            getProductMakerList,
+            moveToProductMaker,
+            updateProductMakerList,
+
             awaitDestination,
             halt,
             noAction
@@ -39,6 +46,7 @@ namespace AutoPlaySV
         private static PathFindController pathFind;
         private List<Building> animalBuildings;
         private List<FarmAnimal> animalsToPet;
+        private List<StardewValley.Object> productMakers;
         private Point destinationChecker;
         private MovementDestination movementDestination;
         private Action nextAction;
@@ -46,7 +54,7 @@ namespace AutoPlaySV
 
 
         // Disable event checker and auto movement for testing
-        private bool debugMode = true;
+        private bool debugMode = false;
 
 
         // Events
@@ -109,68 +117,44 @@ namespace AutoPlaySV
                     this.Monitor.Log($"W2: {w2}", LogLevel.Debug);
                     Game1.player.warpFarmer(w2);
                 }
-                    
-                // go to barn
+
                 if (Game1.currentLocation.Name == "Farm")
                 {
-                    Warp w2 = Game1.currentLocation.isCollidingWithWarpOrDoor(new Microsoft.Xna.Framework.Rectangle(18 * 64, 11 * 64, 64, 64), Game1.player);
-                    Game1.player.warpFarmer(w2);
+                    Game1.player.position.X = 704;
+                    Game1.player.position.Y = 1312;
                 }
-
-                if (Game1.currentLocation.Name.Contains("Barn"))
-                {
-                    AnimalHouse farm = (AnimalHouse)Game1.currentLocation;
-
-                    //GameTime startOfFunction = new Game1.currentGameTime;
-                    this.Monitor.Log($"GameTime Start : {Game1.currentGameTime.TotalGameTime.Ticks}", LogLevel.Debug);
-
-                    foreach (StardewValley.Object obj in Game1.currentLocation.objects.Values)
-                    {
-                        if(obj.Name.Contains("Auto-Grabber"))
-                        {
-                            this.Monitor.Log($"Object Name: {obj.Name}", LogLevel.Debug);
-                            //this.Monitor.Log($"Object Position   X: {obj.tileLocation.X}  Y: {obj.tileLocation.Y}", LogLevel.Debug);
-                            //this.Monitor.Log($"Object Parent Sheet Index : {obj.parentSheetIndex}", LogLevel.Debug);
-                            //this.Monitor.Log($"Object Use Action : {obj.performUseAction(Game1.currentLocation)}", LogLevel.Debug);
-                            //this.Monitor.Log($"Object Use Action : {obj.performUseAction(farm)}", LogLevel.Debug);
-
-                            Game1.activeClickableMenu = new ItemGrabMenu((obj.heldObject.Value as Chest).items, reverseGrab: false, showReceivingMenu: true, InventoryMenu.highlightAllItems, (obj.heldObject.Value as Chest).grabItemFromInventory, null, null, snapToBottom: false, canBeExitedWithKey: true, playRightClickSound: true, allowRightClick: true, showOrganizeButton: true, 1, obj, -1, this);
-                            
-                            this.Monitor.Log($"Grabber Item count : {(obj.heldObject.Value as Chest).items.Count}", LogLevel.Debug);
-
-                            foreach (Item item in (obj.heldObject.Value as Chest).items)
-                            {
-                                this.Monitor.Log($"Item Name : {item.Name}", LogLevel.Debug);
-                                Game1.player.addItemToInventory(item);
-                            }
-
-                            while ((obj.heldObject.Value as Chest).items.Count > 0)
-                            {
-                                foreach (Item item in (obj.heldObject.Value as Chest).items)
-                                {
-                                    (obj.heldObject.Value as Chest).items.Remove(item);
-                                }
-                            }
-
-                            //Game1.activeClickableMenu.exitThisMenu();
-                            this.Monitor.Log($"GameTime End : {Game1.currentGameTime.TotalGameTime.Ticks}", LogLevel.Debug);
-                        }
-                    }
-                    
-                }
-
-
-
-
-                // X:12, Y: 13 - Coletor
-
-                // ShippingBin class -> shipItem method
-
             }
+
+
+            if (e.Button == SButton.L)
+            {
+                //productMakers = new List<StardewValley.Object>();
+
+                //foreach (StardewValley.Object obj in Game1.currentLocation.objects.Values)
+                //{
+                //    if (obj.Name.Contains("Cheese Press") || obj.Name.Contains("Mayonnaise Machine"))
+                //    {
+                //        productMakers.Add(obj);
+                //        //this.Monitor.Log($"Object: {obj.Name} at {obj.tileLocation.X}:{obj.tileLocation.Y}", LogLevel.Debug);
+                //        //this.Monitor.Log($"Action: {obj.checkForAction(Game1.player)}", LogLevel.Debug);
+                //    }
+                //}
+
+                //foreach (StardewValley.Object obj in productMakers)
+                //{
+                //    obj.checkForAction(Game1.player);
+                //}
+
+                nextAction = Action.getProductMakerList;
+                this.Monitor.Log($"Debug Mode Disabled", LogLevel.Debug);
+                debugMode = false;
+            }
+
 
             if (e.Button == SButton.O)
             {
                 this.Monitor.Log($"Player Position - X: {Game1.player.getTileX()} at Y: {Game1.player.getTileY()}", LogLevel.Debug);
+                this.Monitor.Log($"Player Position - X: {Game1.player.position.X} at Y: {Game1.player.position.Y}", LogLevel.Debug);
             }
 
             if (e.Button == SButton.K)
@@ -205,8 +189,6 @@ namespace AutoPlaySV
                 }
             }
         }
-
-        
 
 
 
@@ -274,6 +256,7 @@ namespace AutoPlaySV
                         {
                             this.Monitor.Log($"Reached Destination X: {destinationChecker.X} Y: {destinationChecker.Y}", LogLevel.Debug);
                             bool actionResult = movementDestination.performAction();
+                            this.Monitor.Log($"Action result: {actionResult}", LogLevel.Debug);
                             if (actionResult)
                             {
                                 autoPlayActive = false;
@@ -419,13 +402,67 @@ namespace AutoPlaySV
                 else
                 {
                     animalBuildings.RemoveAt(0);
-                    nextAction = Action.noAction;
+                    //nextAction = Action.noAction;
+                    nextAction = Action.getProductMakerList;
                 }
             }
 
+            // Get List of Product Makers (Mayonnaise Machine and Cheese Press)
+            if (Game1.currentLocation.Name == "Farm" && nextAction == Action.getProductMakerList)
+            {
+                productMakers = new List<StardewValley.Object>();
 
+                foreach (StardewValley.Object obj in Game1.currentLocation.objects.Values)
+                {
+                    if (obj.Name.Contains("Cheese Press") || obj.Name.Contains("Mayonnaise Machine"))
+                    {
+                        productMakers.Add(obj);
+                    }
+                }
+                nextAction = Action.moveToProductMaker;
+            }
 
+            // Move to Product Maker (Mayonnaise Machine and Cheese Press)
+            if (Game1.currentLocation.Name == "Farm" && nextAction == Action.moveToProductMaker)
+            {
+                if (productMakers.Count > 0)
+                {
+                    bool successfulPath = false;
+                    autoPlayActive = true;
+                    int loopingCounter = 0;
 
+                    while (!successfulPath)
+                    {
+                        destinationChecker = new Point((int)productMakers[0].tileLocation.X, (int)productMakers[0].tileLocation.Y);
+                        destinationChecker = FindNearbyUnoccupiedPoint(destinationChecker);
+                        successfulPath = MoveToLocationBool(destinationChecker);
+                        loopingCounter++;
+                        this.Monitor.Log($"Looping... {loopingCounter} times", LogLevel.Debug);
+                    }
+
+                    movementDestination = new MovementDestination(destinationChecker, MovementDestination.MovementAction.MoveToProductMaker, Action.updateProductMakerList, productMakers[0]);
+                    //this.Monitor.Log($"Result: {movementDestination.performAction()}", LogLevel.Debug);
+                    productMakers[0].checkForAction(Game1.player);
+                    this.Monitor.Log($"Moving to {productMakers[0].name} at X: {destinationChecker.X} Y: {destinationChecker.Y}", LogLevel.Debug);
+                    nextAction = Action.awaitDestination;
+                    fallbackAction = Action.moveToProductMaker;
+                }
+            }
+
+            // After getting Product from Product Maker, update Product Maker List and restart cycle
+            if (nextAction == Action.updateProductMakerList)
+            {
+                if (productMakers.Count > 1)
+                {
+                    productMakers.RemoveAt(0);
+                    nextAction = Action.moveToProductMaker;
+                }
+                else
+                {
+                    productMakers.RemoveAt(0);
+                    nextAction = Action.noAction;
+                }
+            }
 
 
 
@@ -568,6 +605,75 @@ namespace AutoPlaySV
                 }
             }
         }
+
+        private void auxAutoGrabberRetrieval()
+        {
+            /*
+            if (e.Button == SButton.P)
+            {
+                // leave house
+                if (Game1.currentLocation.Name == "FarmHouse")
+                {
+                    Warp w2 = Game1.currentLocation.isCollidingWithWarpOrDoor(new Microsoft.Xna.Framework.Rectangle(12 * 64, 21 * 64, 64, 64), Game1.player);
+                    this.Monitor.Log($"W2: {w2}", LogLevel.Debug);
+                    Game1.player.warpFarmer(w2);
+                }
+
+                // go to barn
+                if (Game1.currentLocation.Name == "Farm")
+                {
+                    Warp w2 = Game1.currentLocation.isCollidingWithWarpOrDoor(new Microsoft.Xna.Framework.Rectangle(18 * 64, 11 * 64, 64, 64), Game1.player);
+                    Game1.player.warpFarmer(w2);
+                }
+
+                if (Game1.currentLocation.Name.Contains("Barn"))
+                {
+                    AnimalHouse farm = (AnimalHouse)Game1.currentLocation;
+
+                    //GameTime startOfFunction = new Game1.currentGameTime;
+                    this.Monitor.Log($"GameTime Start : {Game1.currentGameTime.TotalGameTime.Ticks}", LogLevel.Debug);
+
+                    foreach (StardewValley.Object obj in Game1.currentLocation.objects.Values)
+                    {
+                        if (obj.Name.Contains("Auto-Grabber"))
+                        {
+                            this.Monitor.Log($"Object Name: {obj.Name}", LogLevel.Debug);
+                            //this.Monitor.Log($"Object Position   X: {obj.tileLocation.X}  Y: {obj.tileLocation.Y}", LogLevel.Debug);
+                            //this.Monitor.Log($"Object Parent Sheet Index : {obj.parentSheetIndex}", LogLevel.Debug);
+                            //this.Monitor.Log($"Object Use Action : {obj.performUseAction(Game1.currentLocation)}", LogLevel.Debug);
+                            //this.Monitor.Log($"Object Use Action : {obj.performUseAction(farm)}", LogLevel.Debug);
+
+                            Game1.activeClickableMenu = new ItemGrabMenu((obj.heldObject.Value as Chest).items, reverseGrab: false, showReceivingMenu: true, InventoryMenu.highlightAllItems, (obj.heldObject.Value as Chest).grabItemFromInventory, null, null, snapToBottom: false, canBeExitedWithKey: true, playRightClickSound: true, allowRightClick: true, showOrganizeButton: true, 1, obj, -1, this);
+
+                            this.Monitor.Log($"Grabber Item count : {(obj.heldObject.Value as Chest).items.Count}", LogLevel.Debug);
+
+                            foreach (Item item in (obj.heldObject.Value as Chest).items)
+                            {
+                                this.Monitor.Log($"Item Name : {item.Name}", LogLevel.Debug);
+                                Game1.player.addItemToInventory(item);
+                            }
+
+                            while ((obj.heldObject.Value as Chest).items.Count > 0)
+                            {
+                                foreach (Item item in (obj.heldObject.Value as Chest).items)
+                                {
+                                    (obj.heldObject.Value as Chest).items.Remove(item);
+                                }
+                            }
+
+                            //Game1.activeClickableMenu.exitThisMenu();
+                            this.Monitor.Log($"GameTime End : {Game1.currentGameTime.TotalGameTime.Ticks}", LogLevel.Debug);
+                        }
+                    }
+
+                }
+                
+                // X:12, Y: 13 - Coletor
+                // ShippingBin class -> shipItem method
+            }
+            */
+        }
+
 
     }
 }
