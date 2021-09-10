@@ -49,6 +49,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ClosestAnimal.cs" />
     <Compile Include="ModEntry.cs" />
     <Compile Include="MovementDestination.cs" />
     <Compile Include="oldCode.cs" />

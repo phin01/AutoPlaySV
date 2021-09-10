@@ -46,6 +46,7 @@ namespace AutoPlaySV
         private static PathFindController pathFind;
         private List<Building> animalBuildings;
         private List<FarmAnimal> animalsToPet;
+        private List<ClosestAnimal> closestAnimalsToPet;
         private List<StardewValley.Object> productMakers;
         private Point destinationChecker;
         private MovementDestination movementDestination;
@@ -324,61 +325,62 @@ namespace AutoPlaySV
             {
                 this.Monitor.Log($"Getting List of Animals to Pet", LogLevel.Debug);
                 animalsToPet = GetAnimalsList();
-                if(animalsToPet.Count > 0)
+
+                closestAnimalsToPet = new List<ClosestAnimal>();
+
+                foreach (FarmAnimal farmAnimal in animalsToPet)
+                {
+                    closestAnimalsToPet.Add(new ClosestAnimal(farmAnimal));
+                }
+
+                if (closestAnimalsToPet.Count > 0)
                     nextAction = Action.moveToAnimal;
                 else
                     nextAction = Action.noAction;
+
             }
 
             // Move to Animal
             if ((Game1.currentLocation.Name.Contains("Barn") || Game1.currentLocation.Name.Contains("Coop")) && nextAction == Action.moveToAnimal)
             {
-                if(animalsToPet.Count > 0)
+                if (closestAnimalsToPet.Count > 0)
                 {
                     bool successfulPath = false;
                     autoPlayActive = true;
                     int loopingCounter = 0;
 
+                    closestAnimalsToPet.Sort((x, y) => x.SortedPosition().CompareTo(y.SortedPosition()));
+
                     while (!successfulPath)
                     {
-                        destinationChecker = new Point((int)animalsToPet[0].position.X / 64, (int)animalsToPet[0].position.Y / 64);
+                        destinationChecker = new Point((int)closestAnimalsToPet[0].GetAnimal().position.X / 64, (int)closestAnimalsToPet[0].GetAnimal().position.Y / 64); ;
                         destinationChecker = FindNearbyUnoccupiedPoint(destinationChecker);
                         successfulPath = MoveToLocationBool(destinationChecker);
                         loopingCounter++;
                         this.Monitor.Log($"Looping... {loopingCounter} times", LogLevel.Debug);
                     }
 
-                    movementDestination = new MovementDestination(destinationChecker, MovementDestination.MovementAction.MoveToAnimal, Action.updateAnimalList, animalsToPet[0]);
-                    this.Monitor.Log($"Moving to Animal {animalsToPet[0].name} at X: {destinationChecker.X} Y: {destinationChecker.Y}", LogLevel.Debug);
+                    movementDestination = new MovementDestination(destinationChecker, MovementDestination.MovementAction.MoveToAnimal, Action.updateAnimalList, closestAnimalsToPet[0].GetAnimal());
+                    this.Monitor.Log($"Moving to Animal {closestAnimalsToPet[0].GetAnimal().name} at X: {destinationChecker.X} Y: {destinationChecker.Y}", LogLevel.Debug);
                     nextAction = Action.awaitDestination;
                     fallbackAction = Action.moveToAnimal;
-
-                    /*autoPlayActive = true;
-                    destinationChecker = new Point((int)animalsToPet[0].position.X / 64, (int)animalsToPet[0].position.Y / 64);
-                    destinationChecker = FindNearbyUnoccupiedPoint(destinationChecker);
-                    movementDestination = new MovementDestination(destinationChecker, MovementDestination.MovementAction.MoveToAnimal, Action.updateAnimalList, animalsToPet[0]);
-                    MoveToLocation(destinationChecker, searchNearby: false);
-
-                    this.Monitor.Log($"Moving to Animal {animalsToPet[0].name} at X: {destinationChecker.X} Y: {destinationChecker.Y}", LogLevel.Debug);
-                    nextAction = Action.awaitDestination;
-                    fallbackAction = Action.moveToAnimal;
-                    */
                 }
             }
 
             // After petting, update Animal List and restart movement/petting cycle
             if (nextAction == Action.updateAnimalList)
             {
-                if(animalsToPet.Count > 1)
+                if (closestAnimalsToPet.Count > 1)
                 {
-                    animalsToPet.RemoveAt(0);
+                    closestAnimalsToPet.RemoveAt(0);
                     nextAction = Action.moveToAnimal;
                 }
                 else
                 {
-                    animalsToPet.RemoveAt(0);
+                    closestAnimalsToPet.RemoveAt(0);
                     nextAction = Action.exitAnimalHouse;
                 }
+
             }
 
             // Leave Animal House after all tasks have been completed
