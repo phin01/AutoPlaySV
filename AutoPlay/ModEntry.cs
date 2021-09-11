@@ -31,6 +31,9 @@ namespace AutoPlaySV
             moveToAnimal,
             petAnimal,
             updateAnimalList,
+            moveToAutoGrabber,
+            openAutoGrabber,
+            getFromAutoGrabber,
             exitAnimalHouse,
 
             getProductMakerList,
@@ -39,9 +42,19 @@ namespace AutoPlaySV
 
             awaitDestination,
             halt,
-            noAction
+            noAction,
+
+            startSchedule,
+            endSchedule
+
         }
         
+        public enum Schedule
+        {
+            Rancher,
+            Farmer
+        }
+
         
         private static PathFindController pathFind;
         private List<Building> animalBuildings;
@@ -52,6 +65,9 @@ namespace AutoPlaySV
         private MovementDestination movementDestination;
         private Action nextAction;
         private Action fallbackAction;
+        private PlayerSchedule playerSchedule;
+        private Schedule currentSchedule;
+        private double timedActionStart;
 
 
         // Disable event checker and auto movement for testing
@@ -119,10 +135,26 @@ namespace AutoPlaySV
                     Game1.player.warpFarmer(w2);
                 }
 
+                // go to barn
                 if (Game1.currentLocation.Name == "Farm")
                 {
-                    Game1.player.position.X = 704;
-                    Game1.player.position.Y = 1312;
+                    
+                }
+
+                if (Game1.currentLocation.Name == "Farm")
+                {
+                    // Move to region around product makers
+                    //Game1.player.position.X = 704;
+                    //Game1.player.position.Y = 1312;
+
+                    // warp to barn
+                    Warp w2 = Game1.currentLocation.isCollidingWithWarpOrDoor(new Microsoft.Xna.Framework.Rectangle(18 * 64, 11 * 64, 64, 64), Game1.player);
+                    Game1.player.warpFarmer(w2);
+
+                    playerSchedule = new PlayerSchedule();
+                    currentSchedule = Schedule.Rancher;
+                    playerSchedule.setCurrentSchedule(currentSchedule);
+                    //nextAction = Action.startSchedule;
                 }
             }
 
@@ -146,10 +178,19 @@ namespace AutoPlaySV
                 //    obj.checkForAction(Game1.player);
                 //}
 
-                nextAction = Action.getProductMakerList;
-                this.Monitor.Log($"Debug Mode Disabled", LogLevel.Debug);
+
+                //nextAction = Action.getProductMakerList;
+                //this.Monitor.Log($"Debug Mode Disabled", LogLevel.Debug);
+                //debugMode = false;
+
+                //nextAction = playerSchedule.GetNextAction(nextAction);
+                this.Monitor.Log($"Next Action: {nextAction.ToString()}", LogLevel.Debug);
+                
+                nextAction = Action.moveToAutoGrabber;
+                autoPlayActive = true;
                 debugMode = false;
-            }
+
+    }
 
 
             if (e.Button == SButton.O)
@@ -198,7 +239,7 @@ namespace AutoPlaySV
         // *****************************************************
         private void CheckEvent()
         {
-            // Leave the house after waking up (triggers before 7am)
+            // Leave the house after waking up
             if (Game1.currentLocation.Name == "FarmHouse" && nextAction == Action.leaveHouse)
             {
                 this.DayHasStarted?.Invoke(this, EventArgs.Empty);
@@ -211,7 +252,10 @@ namespace AutoPlaySV
             {
                 autoPlayActive = false;
                 this.Monitor.Log($"Halt movement", LogLevel.Debug);
-                nextAction = Action.findAnimalBuildings;
+                playerSchedule = new PlayerSchedule();
+                currentSchedule = Schedule.Rancher;
+                playerSchedule.setCurrentSchedule(currentSchedule);
+                nextAction = playerSchedule.GetNextAction(Action.startSchedule);
             }
 
             // Find Animal Buildings
@@ -221,7 +265,7 @@ namespace AutoPlaySV
                 animalBuildings = GetAnimalBuildings();
                 if(animalBuildings.Count > 0)
                 {
-                    nextAction = Action.moveToAnimalBuildings;
+                    nextAction = playerSchedule.GetNextAction(nextAction);
                     this.Monitor.Log($"Found {animalBuildings.Count} Animal Buildings", LogLevel.Debug);
                 }
                 autoPlayActive = true;
@@ -233,13 +277,12 @@ namespace AutoPlaySV
                 if (animalBuildings.Count > 0)
                 {
                     destinationChecker = new Point(animalBuildings[0].getPointForHumanDoor().X, animalBuildings[0].getPointForHumanDoor().Y + 1);
-                    movementDestination = new MovementDestination(destinationChecker, MovementDestination.MovementAction.EnterAnimalBuilding, Action.getAnimalsList);
-                    
+                    movementDestination = new MovementDestination(destinationChecker, MovementDestination.MovementAction.EnterAnimalBuilding, playerSchedule.GetNextAction(nextAction));
                     MoveToLocationBool(destinationChecker);
                     autoPlayActive = true;
 
                     this.Monitor.Log($"Moving to  {animalBuildings[0].buildingType} at X: {destinationChecker.X} Y: {destinationChecker.Y}", LogLevel.Debug);
-                    nextAction = Action.awaitDestination;
+                    nextAction = playerSchedule.GetNextAction(nextAction, primaryAction:false);
                     fallbackAction = Action.noAction;
                 }
             }
@@ -262,6 +305,7 @@ namespace AutoPlaySV
                             {
                                 autoPlayActive = false;
                                 nextAction = movementDestination.NextAction;
+                                timedActionStart = Game1.currentGameTime.TotalGameTime.TotalSeconds;
                             }
                             else
                                 this.Monitor.Log($"Could not perform Destination Action at X: {destinationChecker.X} Y: {destinationChecker.Y}", LogLevel.Debug);
@@ -333,10 +377,7 @@ namespace AutoPlaySV
                     closestAnimalsToPet.Add(new ClosestAnimal(farmAnimal));
                 }
 
-                if (closestAnimalsToPet.Count > 0)
-                    nextAction = Action.moveToAnimal;
-                else
-                    nextAction = Action.noAction;
+                nextAction = playerSchedule.GetNextAction(nextAction, closestAnimalsToPet.Count > 0);
 
             }
 
@@ -360,9 +401,9 @@ namespace AutoPlaySV
                         this.Monitor.Log($"Looping... {loopingCounter} times", LogLevel.Debug);
                     }
 
-                    movementDestination = new MovementDestination(destinationChecker, MovementDestination.MovementAction.MoveToAnimal, Action.updateAnimalList, closestAnimalsToPet[0].GetAnimal());
+                    movementDestination = new MovementDestination(destinationChecker, MovementDestination.MovementAction.MoveToAnimal, playerSchedule.GetNextAction(nextAction), closestAnimalsToPet[0].GetAnimal());
                     this.Monitor.Log($"Moving to Animal {closestAnimalsToPet[0].GetAnimal().name} at X: {destinationChecker.X} Y: {destinationChecker.Y}", LogLevel.Debug);
-                    nextAction = Action.awaitDestination;
+                    nextAction = playerSchedule.GetNextAction(nextAction, primaryAction: false);
                     fallbackAction = Action.moveToAnimal;
                 }
             }
@@ -370,17 +411,8 @@ namespace AutoPlaySV
             // After petting, update Animal List and restart movement/petting cycle
             if (nextAction == Action.updateAnimalList)
             {
-                if (closestAnimalsToPet.Count > 1)
-                {
-                    closestAnimalsToPet.RemoveAt(0);
-                    nextAction = Action.moveToAnimal;
-                }
-                else
-                {
-                    closestAnimalsToPet.RemoveAt(0);
-                    nextAction = Action.exitAnimalHouse;
-                }
-
+                closestAnimalsToPet.RemoveAt(0);
+                nextAction = playerSchedule.GetNextAction(nextAction, closestAnimalsToPet.Count > 0);
             }
 
             // Leave Animal House after all tasks have been completed
@@ -389,7 +421,7 @@ namespace AutoPlaySV
                 autoPlayActive = true;
                 this.Monitor.Log($"Leaving {animalBuildings[0].buildingType}", LogLevel.Debug);
                 ExitBuildingToFarm();
-                nextAction = Action.updateAnimalBuildingList;
+                nextAction = playerSchedule.GetNextAction(nextAction);
             }
 
             // After completing tasks in Animal House, update List and restart cycle for next Houses
@@ -466,6 +498,71 @@ namespace AutoPlaySV
                 }
             }
 
+            // Move to Auto-Grabber
+            if ((Game1.currentLocation.Name.Contains("Barn") || Game1.currentLocation.Name.Contains("Coop")) && nextAction == Action.moveToAutoGrabber)
+            {
+                foreach (StardewValley.Object obj in Game1.currentLocation.objects.Values)
+                {
+                    if (obj.Name.Contains("Auto-Grabber"))
+                    {
+                        bool successfulPath = false;
+                        autoPlayActive = true;
+
+                        while (!successfulPath)
+                        {
+                            destinationChecker = new Point((int)obj.tileLocation.X, (int)obj.tileLocation.Y);
+                            destinationChecker = FindNearbyUnoccupiedPoint(destinationChecker);
+                            successfulPath = MoveToLocationBool(destinationChecker);
+                        }
+
+                        movementDestination = new MovementDestination(destinationChecker, MovementDestination.MovementAction.MoveToAutoGrabber, playerSchedule.GetNextAction(nextAction), obj);
+                        this.Monitor.Log($"Moving to Auto-Grabber at X: {destinationChecker.X} Y: {destinationChecker.Y}", LogLevel.Debug);
+                        nextAction = playerSchedule.GetNextAction(nextAction, primaryAction: false);
+                        fallbackAction = Action.moveToAutoGrabber;
+
+                    }
+                }
+            }
+
+            // Get items from Auto-Grabber
+            if ((Game1.currentLocation.Name.Contains("Barn") || Game1.currentLocation.Name.Contains("Coop")) && nextAction == Action.getFromAutoGrabber)
+            {
+
+                foreach (StardewValley.Object obj in Game1.currentLocation.objects.Values)
+
+                {
+                    if (obj.Name.Contains("Auto-Grabber") && Game1.currentGameTime.TotalGameTime.TotalSeconds - timedActionStart > 0.5)
+                    {
+                        
+                        this.Monitor.Log($"Grabber Item count : {(obj.heldObject.Value as Chest).items.Count}", LogLevel.Debug);
+                        foreach (Item item in (obj.heldObject.Value as Chest).items)
+                        {
+                            this.Monitor.Log($"Item Name : {item.Name}", LogLevel.Debug);
+                            Game1.player.addItemToInventory(item);
+                        }
+
+                        while ((obj.heldObject.Value as Chest).items.Count > 0)
+                        {
+                            foreach (Item item in (obj.heldObject.Value as Chest).items)
+                            {
+                                (obj.heldObject.Value as Chest).items.Remove(item);
+                            }
+                        }
+
+                        // Close Auto-Grabber open menu from previous action
+                        try
+                        {
+                            Game1.exitActiveMenu();
+                        }
+                        catch (Exception)
+                        {
+                            this.Monitor.Log($"No open menus from Auto-Grabber", LogLevel.Debug);
+                        }
+
+                        nextAction = playerSchedule.GetNextAction(nextAction);
+                    }
+                }
+            }
 
 
 
