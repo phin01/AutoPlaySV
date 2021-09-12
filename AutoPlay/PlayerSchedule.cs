@@ -31,9 +31,14 @@ namespace AutoPlaySV
                     currentSchedule.Add(ModEntry.Action.moveToAnimalBuildings, new List<ModEntry.Action> { ModEntry.Action.getAnimalsList, ModEntry.Action.awaitDestination });
                     currentSchedule.Add(ModEntry.Action.getAnimalsList, new List<ModEntry.Action> { ModEntry.Action.moveToAnimal, ModEntry.Action.exitAnimalHouse });
                     currentSchedule.Add(ModEntry.Action.moveToAnimal, new List<ModEntry.Action> { ModEntry.Action.updateAnimalList, ModEntry.Action.awaitDestination });
-                    currentSchedule.Add(ModEntry.Action.updateAnimalList, new List<ModEntry.Action> { ModEntry.Action.moveToAnimal, ModEntry.Action.exitAnimalHouse });
+                    currentSchedule.Add(ModEntry.Action.updateAnimalList, new List<ModEntry.Action> { ModEntry.Action.moveToAnimal, ModEntry.Action.moveToAutoGrabber });
+                    currentSchedule.Add(ModEntry.Action.moveToAutoGrabber, new List<ModEntry.Action> { ModEntry.Action.getFromAutoGrabber, ModEntry.Action.awaitDestination });
+                    currentSchedule.Add(ModEntry.Action.getFromAutoGrabber, new List<ModEntry.Action> { ModEntry.Action.exitAnimalHouse });
                     currentSchedule.Add(ModEntry.Action.exitAnimalHouse, new List<ModEntry.Action> { ModEntry.Action.updateAnimalBuildingList });
-                    currentSchedule.Add(ModEntry.Action.updateAnimalBuildingList, new List<ModEntry.Action> { ModEntry.Action.moveToAnimalBuildings, ModEntry.Action.endSchedule });
+                    currentSchedule.Add(ModEntry.Action.updateAnimalBuildingList, new List<ModEntry.Action> { ModEntry.Action.moveToAnimalBuildings, ModEntry.Action.getProductMakerList });
+                    currentSchedule.Add(ModEntry.Action.getProductMakerList, new List<ModEntry.Action> { ModEntry.Action.moveToProductMaker });
+                    currentSchedule.Add(ModEntry.Action.moveToProductMaker, new List<ModEntry.Action> { ModEntry.Action.updateProductMakerList, ModEntry.Action.awaitDestination });
+                    currentSchedule.Add(ModEntry.Action.updateProductMakerList, new List<ModEntry.Action> { ModEntry.Action.moveToProductMaker, ModEntry.Action.endSchedule });
                     break;
 
                 default:
