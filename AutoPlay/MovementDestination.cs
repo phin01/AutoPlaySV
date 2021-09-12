@@ -21,7 +21,8 @@ namespace AutoPlaySV
             EnterFarmHouse,
             EnterGreenhouse,
             MoveToAnimal,
-            MoveToProductMaker
+            MoveToProductMaker,
+            MoveToAutoGrabber
         }
 
         public Point Destination { get; set; }
@@ -131,6 +132,22 @@ namespace AutoPlaySV
             try
             {
                 productMaker.checkForAction(Game1.player);
+                Item product = null;
+
+                if(productMaker.name.Contains("Cheese"))
+                    product = Game1.player.hasItemWithNameThatContains("Milk");
+                else if(productMaker.name.Contains("Mayonnaise"))
+                    product = Game1.player.hasItemWithNameThatContains("Egg");
+                
+                if (product != null)
+                {
+                    productMaker.performObjectDropInAction(product, false, Game1.player);
+                    product.Stack--;
+                    if(product.Stack == 0)
+                        Game1.player.removeItemFromInventory(product);
+                }
+                    
+
                 return true;
             }
             catch (Exception)
