@@ -89,6 +89,10 @@ namespace AutoPlaySV
                     return GetProductFromMaker(ParamObject);
                     break;
 
+                case MovementAction.MoveToAutoGrabber:
+                    return TryToOpenAutoGrabber(ParamObject);
+                    break;
+
                 default:
                     return false;
 
@@ -135,7 +139,18 @@ namespace AutoPlaySV
             }
         }
     
-    
+        public bool TryToOpenAutoGrabber(StardewValley.Object autoGrabber)
+        {
+            try
+            {
+                autoGrabber.checkForAction(Game1.player);
+                return true;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
     
     
     }
